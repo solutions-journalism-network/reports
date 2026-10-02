@@ -256,7 +256,7 @@ $('signin-form').addEventListener('submit', async (e) => {
   btn.disabled = false; btn.textContent = 'Email me a sign-in link';
   if (error) {
     $('signin-error').textContent = /signup|not allowed|not found/i.test(error.message)
-      ? "That email address doesn't have access yet. Contact SJN to be added."
+      ? "That email address doesn't have access yet. Contact marie@solutionsjournalism.org to be added."
       : /rate|seconds/i.test(error.message)
         ? 'Please wait a minute before asking for another link.'
         : 'Something went wrong: ' + error.message;

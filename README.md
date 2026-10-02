@@ -1,6 +1,6 @@
-# SJN Reports site (Supabase version)
+# SJN Reports site
 
-The site at **reports.solutionsjournalism.org** shares Claude-created HTML reports with SJN staff and partners.
+The site at **reports.solutionsjournalism.org** shares HTML reports with SJN staff and partners.
 
 ## How it works
 
@@ -63,23 +63,18 @@ The publishable key is meant to be public. The access rules from step 2 decide w
 ### 6. Add yourself and test
 1. **Authentication → Users → Add user → Send invitation** with your email. Click the link in the email. It opens the site, already signed in.
 2. You should see **Upload reports** (you're on the uploaders list). Upload a report, open it, edit its title, and delete it to check everything works.
-3. Upload the existing reports from the Drive folder. You can select several at once.
-
-### 7. Retire the old setup
-- In Apps Script: **Deploy → Manage deployments**, archive the web app, and delete any triggers. You can keep the project for reference or delete it.
-- The Drive folder can stay as an archive of the original files. The site no longer reads it.
 
 ---
 
 ## Everyday use
 
-**Giving someone access:** Authentication → Users → **Add user → Send invitation**. They click the emailed link and they're in. Afterward, they sign in by entering their email on the site.
+**Giving someone access:** In Supabase, go to Authentication → Users → **Add user → Send invitation**. They click the emailed link and they're in. Afterward, they sign in by entering their email on the site.
 
 **Making someone an uploader:** also add their email in **Table Editor → uploaders** (Insert → row). Capitalization doesn't matter.
 
 **Removing access:** Authentication → Users → find them → **Delete user**. Also delete them from **uploaders** if they're listed. Their sign-in stops working; if they're signed in at that moment, they lose access within about an hour, when their session refreshes.
 
-**Uploading (David):** sign in → **Upload reports** → drop in HTML files. Titles and summaries come from inside each file, and you can edit them before uploading. Reports appear immediately.
+**Uploading:** sign in → **Upload reports** → drop in HTML files. Titles and summaries come from inside each file, and you can edit them before uploading. Reports appear immediately.
 
 **Fixing a title later:** click **Edit** next to the report.
 

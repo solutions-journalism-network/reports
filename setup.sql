@@ -86,7 +86,7 @@ create policy "Uploaders can delete report files" on storage.objects
   for delete to authenticated using (bucket_id = 'reports' and public.is_uploader());
 
 -- 4. Add the first uploaders (edit these emails, then run). You can add more later in Table Editor.
--- insert into public.uploaders (email) values
---   ('marie@solutionsjournalism.org'),
---   ('david@solutionsjournalism.org')
--- on conflict do nothing;
+insert into public.uploaders (email) values
+('marie@solutionsjournalism.org'),
+('david@solutionsjournalism.org')
+on conflict do nothing;

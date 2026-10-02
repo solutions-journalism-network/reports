@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="favicon.ico">
+<title>Solutions Journalism Network — Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #D34435;
+    --teal: #30626B;
+    --ink: #000000;
+    --paper: #FFFFFF;
+    --mist: #EEF3F4;
+    --muted: #55686B;
+    --line: #D8E2E4;
+    --sans: Figtree, "Helvetica Neue", Arial, sans-serif;
+    --serif: Lora, Georgia, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: var(--sans); color: var(--ink); background: var(--paper); line-height: 1.5; font-size: 16px; }
+  button, input, textarea { font: inherit; }
+  :focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  /* Buttons: SJN-style outlined red, with a filled version for the main action */
+  .btn {
+    border: 1.5px solid var(--red); background: var(--paper); color: var(--red);
+    padding: .5rem 1rem; border-radius: 2px; font-weight: 500; font-size: .9rem; cursor: pointer;
+  }
+  .btn:hover { background: var(--red); color: var(--paper); }
+  #signin-btn, #upload-go { background: var(--red); color: var(--paper); }
+  #signin-btn:hover, #upload-go:hover { background: #B8392C; border-color: #B8392C; }
+  .btn.ghost { border-color: var(--teal); color: var(--teal); }
+  .btn.ghost:hover { background: var(--teal); color: var(--paper); }
+  .btn.link { border: none; background: none; color: var(--teal); padding: .25rem .4rem; text-decoration: underline; text-underline-offset: 3px; }
+  .btn.link:hover { color: var(--red); background: none; }
+  .btn.link.danger { color: var(--red); }
+  .btn:disabled { opacity: .55; cursor: wait; }
+
+  /* Sign in */
+  #signin { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; }
+  #signin .panel-dark {
+    background: var(--teal); color: var(--paper);
+    padding: clamp(2rem, 6vw, 5rem);
+    display: flex; flex-direction: column; justify-content: flex-end;
+    border-top: 6px solid var(--red);
+  }
+  .wordmark { color: var(--paper); font-weight: 700; letter-spacing: .06em; line-height: 1.05; font-size: 1rem; margin-bottom: auto; }
+  .wordmark span { display: block; font-weight: 400; }
+  .logo-img { display: block; height: auto; }
+  .panel-dark .logo-img { width: min(15rem, 70%); margin-bottom: auto; filter: brightness(0) invert(1); } /* turns the logo white on teal */
+  header.bar .logo-img { width: 11rem; }
+  .logo-fallback { display: none; }
+  .logo-missing .logo-img { display: none; }
+  .logo-missing .logo-fallback { display: block; }
+  #signin .panel-dark h1 { font-weight: 500; font-size: clamp(2.8rem, 7vw, 5rem); line-height: 1.05; margin: 0 0 1rem; }
+  #signin .panel-dark p { font-family: var(--serif); font-style: italic; max-width: 32ch; margin: 0; font-size: 1.15rem; line-height: 1.6; }
+  #signin .panel-form { padding: clamp(2rem, 6vw, 5rem); display: flex; flex-direction: column; justify-content: center; max-width: 30rem; }
+  #signin .panel-form h2 { color: var(--red); font-weight: 400; font-size: 2rem; margin: 0 0 1.25rem; }
+  #signin label { display: block; font-weight: 600; margin-bottom: .4rem; }
+  #signin input { width: 100%; padding: .7rem .8rem; border: 1.5px solid var(--line); border-radius: 2px; margin-bottom: 1rem; }
+  #signin input:focus { border-color: var(--teal); }
+  .error { color: var(--red); min-height: 1.5em; margin: .25rem 0 1rem; }
+  @media (max-width: 760px) { #signin { grid-template-columns: 1fr; } #signin .panel-dark { min-height: 42vh; } }
+
+  /* Library */
+  header.bar {
+    background: var(--paper); border-bottom: 1px solid var(--line);
+    padding: 1rem clamp(1rem, 4vw, 3rem);
+    display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  }
+  header.bar .name { margin-right: auto; color: var(--red); font-weight: 700; letter-spacing: .06em; line-height: 1.05; font-size: .95rem; }
+  header.bar .name .logo-fallback span { display: block; font-weight: 400; }
+  header.bar .name em { display: block; font-style: normal; color: var(--teal); font-weight: 500; letter-spacing: 0; font-size: .85rem; margin-top: .2rem; }
+  .role { font-size: .85rem; color: var(--muted); }
+
+  main { padding: 3rem clamp(1rem, 4vw, 3rem) 4rem; max-width: 70rem; margin: 0 auto; }
+  .lib-head { display: flex; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
+  .lib-head h2 { color: var(--red); font-weight: 400; font-size: clamp(2rem, 4vw, 2.75rem); margin: 0; line-height: 1.1; margin-right: auto; }
+  .lib-head h2 .count { color: var(--muted); font-size: .45em; margin-left: .4rem; }
+  #search { padding: .6rem .8rem; border: 1.5px solid var(--line); border-radius: 2px; width: min(22rem, 100%); }
+  #search:focus { border-color: var(--teal); }
+
+  ol.reports { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--teal); }
+  ol.reports li { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; padding: 1.4rem 0; border-bottom: 1px solid var(--line); align-items: start; }
+  .r-title { font-size: 1.2rem; font-weight: 600; color: var(--ink); background: none; border: none; padding: 0; text-align: left; cursor: pointer; }
+  .r-title:hover { color: var(--red); text-decoration: underline; text-underline-offset: 4px; }
+  .r-summary { font-family: var(--serif); margin: .35rem 0 0; max-width: 62ch; line-height: 1.65; }
+  .r-by { margin: .35rem 0 0; font-size: .85rem; color: var(--muted); }
+  .r-actions { display: flex; gap: .25rem; flex-wrap: wrap; justify-content: flex-end; }
+  @media (max-width: 640px) { ol.reports li { grid-template-columns: 1fr; gap: .5rem; } .r-actions { justify-content: flex-start; } }
+  .empty { padding: 2.5rem 1.5rem; color: var(--muted); background: var(--mist); font-family: var(--serif); }
+
+  /* Viewer */
+  #viewer { position: fixed; inset: 0; background: var(--paper); display: flex; flex-direction: column; z-index: 20; }
+  #viewer .bar { padding: .7rem clamp(1rem, 3vw, 2rem); }
+  #viewer-title { margin-right: auto; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  #frame { flex: 1; width: 100%; border: 0; background: var(--paper); }
+
+  /* Upload dialog */
+  dialog { border: none; border-radius: 2px; padding: 0; width: min(40rem, 94vw); box-shadow: 0 16px 50px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(48,98,107,.6); }
+  .dlg-head { padding: 1.25rem 1.5rem .5rem; border-top: 6px solid var(--red); }
+  .dlg-head h3 { margin: 0; color: var(--red); font-weight: 400; font-size: 1.6rem; }
+  .dlg-body { padding: 1rem 1.5rem 1.5rem; max-height: 65vh; overflow: auto; }
+  .dlg-foot { padding: 1rem 1.5rem; display: flex; justify-content: flex-end; gap: .5rem; background: var(--mist); }
+  .field { margin-bottom: 1rem; }
+  .field label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: .3rem; }
+  .field input, .field textarea { width: 100%; padding: .55rem .7rem; border: 1.5px solid var(--line); border-radius: 2px; }
+  .field input:focus, .field textarea:focus { border-color: var(--teal); }
+  .field textarea { resize: vertical; min-height: 3.5rem; font-family: var(--serif); }
+  .drop { display: block; border: 2px dashed var(--teal); padding: 1.5rem; text-align: center; background: var(--mist); color: var(--teal); cursor: pointer; margin-bottom: 1.25rem; }
+  .drop.over { background: #DDE9EB; }
+  .pending { border-left: 4px solid var(--teal); padding: .75rem 0 .25rem 1rem; margin-bottom: 1rem; }
+  .pending .fname { font-size: .85rem; color: var(--muted); margin-bottom: .5rem; display: flex; justify-content: space-between; gap: 1rem; }
+  .pending.done { opacity: .6; }
+  .pending.failed { border-left-color: var(--red); }
+
+  #toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--teal); color: var(--paper); padding: .7rem 1.2rem; border-radius: 2px; z-index: 50; }
+  .sent { font-family: var(--serif); line-height: 1.6; }
+  .sent strong { font-family: var(--sans); }
+  .r-actions .btn.link.edit { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- Sign in -->
+<section id="signin">
+  <div class="panel-dark">
+    <div class="logo" style="margin-bottom:auto">
+      <img class="logo-img" src="sjn-logo.png" alt="Solutions Journalism Network" onerror="this.parentNode.classList.add('logo-missing')">
+      <div class="wordmark logo-fallback">SOLUTIONS<br>JOURNALISM<span>NETWORK</span></div>
+    </div>
+    <h1>Reports</h1>
+    <p>Solutions Journalism Network reports, shared with our team and partners.</p>
+  </div>
+  <div class="panel-form">
+    <form id="signin-form">
+      <h2>Sign in</h2>
+      <label for="email">Your email address</label>
+      <input id="email" type="email" autocomplete="email" required autofocus>
+      <div class="error" id="signin-error" role="alert"></div>
+      <button class="btn" type="submit" id="signin-btn">Email me a sign-in link</button>
+    </form>
+    <div id="signin-sent" class="sent" hidden>
+      <h2>Check your email</h2>
+      <p>We sent a sign-in link to <strong id="sent-to"></strong>. Open it on this device to sign in. It may take a minute to arrive, and it's worth checking your spam folder.</p>
+      <button class="btn ghost" id="signin-again" type="button">Use a different email</button>
+    </div>
+  </div>
+</section>
+
+<!-- Library -->
+<section id="library" hidden>
+  <header class="bar">
+    <div class="name">
+      <div class="logo">
+        <img class="logo-img" src="sjn-logo.png" alt="Solutions Journalism Network" onerror="this.parentNode.classList.add('logo-missing')">
+        <div class="logo-fallback">SOLUTIONS<br>JOURNALISM<span>NETWORK</span></div>
+      </div>
+    </div>
+    <span class="role" id="role-label"></span>
+    <button class="btn" id="upload-open" hidden>Upload reports</button>
+    <button class="btn ghost" id="signout">Sign out</button>
+  </header>
+  <main>
+    <div class="lib-head">
+      <h2>All reports <span class="count" id="count"></span></h2>
+      <input id="search" type="search" placeholder="Search titles and summaries" aria-label="Search reports">
+    </div>
+    <ol class="reports" id="list"></ol>
+    <p class="empty" id="empty" hidden></p>
+  </main>
+</section>
+
+<!-- Report viewer -->
+<section id="viewer" hidden>
+  <header class="bar">
+    <button class="btn ghost" id="viewer-back">Back to reports</button>
+    <div id="viewer-title"></div>
+    <button class="btn" id="viewer-download">Download</button>
+  </header>
+  <!-- sandbox without allow-same-origin: the report's scripts run, but can't read this site's sign-in session -->
+  <iframe id="frame" title="Report" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-modals"></iframe>
+</section>
+
+<!-- Upload dialog -->
+<dialog id="upload-dlg" aria-labelledby="upload-title">
+  <div class="dlg-head"><h3 id="upload-title">Upload reports</h3></div>
+  <div class="dlg-body">
+    <label class="drop" id="drop">
+      <input type="file" id="file-input" accept=".html,.htm,text/html" multiple hidden>
+      Drop HTML files here, or <u>choose files</u>
+    </label>
+    <div class="field">
+      <label for="uploader-name">Your name</label>
+      <input id="uploader-name" type="text" autocomplete="name">
+    </div>
+    <div id="pending"></div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn ghost" id="upload-cancel" type="button">Close</button>
+    <button class="btn" id="upload-go" type="button" disabled>Upload</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status" hidden></div>
+
+<script>
+// ===== Paste your Supabase project's details here (Project Settings → API Keys / Data API) =====
+const SUPABASE_URL = 'https://YOUR-PROJECT-ID.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_PASTE_YOUR_KEY_HERE'; // the PUBLISHABLE key — never the secret one
+
+/*
+ * How this site works
+ * People sign in with an emailed link (only addresses you've added in Supabase can sign in).
+ * The report list lives in the "reports" table and the report files in the private "reports"
+ * storage bucket. Supabase's access rules (see setup.sql) decide who can read and who can upload.
+ */
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const BUCKET = 'reports';
+const $ = (id) => document.getElementById(id);
+const state = { user: null, uploader: false, reports: [], current: null, pending: [] };
+const cache = {};
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3500);
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function remember(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+function recall(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+/* ---------- Sign in / out ---------- */
+$('signin-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('email').value.trim();
+  const btn = $('signin-btn'); btn.disabled = true; btn.textContent = 'Sending…';
+  $('signin-error').textContent = '';
+  // If they arrived through a link to one report, open it after they sign in
+  const m = location.hash.match(/^#report=([\w-]+)$/);
+  if (m) remember('pending_report', m[1]);
+  const { error } = await db.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false, emailRedirectTo: location.origin + location.pathname }
+  });
+  btn.disabled = false; btn.textContent = 'Email me a sign-in link';
+  if (error) {
+    $('signin-error').textContent = /signup|not allowed|not found/i.test(error.message)
+      ? "That email address doesn't have access yet. Contact SJN to be added."
+      : /rate|seconds/i.test(error.message)
+        ? 'Please wait a minute before asking for another link.'
+        : 'Something went wrong: ' + error.message;
+    return;
+  }
+  $('sent-to').textContent = email;
+  $('signin-form').hidden = true; $('signin-sent').hidden = false;
+});
+$('signin-again').addEventListener('click', () => {
+  $('signin-sent').hidden = true; $('signin-form').hidden = false; $('email').focus();
+});
+
+$('signout').addEventListener('click', async () => { await db.auth.signOut(); });
+
+function showSignin() {
+  state.user = null; state.uploader = false; state.reports = [];
+  Object.keys(cache).forEach(k => delete cache[k]);
+  $('library').hidden = true; hideViewer(); $('signin').hidden = false;
+  $('signin-sent').hidden = true; $('signin-form').hidden = false;
+}
+
+// Supabase tells us whenever someone signs in (including from an emailed link) or out
+db.auth.onAuthStateChange((event, session) => {
+  const user = session && session.user;
+  if (user && (!state.user || state.user.id !== user.id)) { state.user = user; setTimeout(showLibrary, 0); }
+  else if (!user && state.user !== undefined) { showSignin(); }
+});
+
+/* ---------- Library ---------- */
+async function showLibrary() {
+  $('signin').hidden = true; $('library').hidden = false;
+  $('list').innerHTML = '';
+  $('empty').hidden = false; $('empty').textContent = 'Loading reports…';
+  const [{ data: up }, list] = await Promise.all([db.rpc('is_uploader'), loadReports()]);
+  state.uploader = up === true;
+  $('upload-open').hidden = !state.uploader;
+  $('role-label').textContent = state.uploader ? 'Can upload' : '';
+  if (list) { state.reports = list; render(); openFromAddress(); }
+}
+
+async function loadReports() {
+  const { data, error } = await db.from('reports')
+    .select('id, title, summary, file_name, storage_path, uploader_name, created_at')
+    .order('created_at', { ascending: false });
+  if (error) { $('empty').textContent = "Couldn't load the reports: " + error.message; return null; }
+  return data;
+}
+
+function render() {
+  const q = $('search').value.trim().toLowerCase();
+  const items = state.reports.filter(r =>
+    !q || (r.title + ' ' + r.summary + ' ' + r.uploader_name).toLowerCase().includes(q));
+  $('count').textContent = state.reports.length || '';
+  $('list').innerHTML = items.map(r => {
+    const when = new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return `<li>
+      <div>
+        <button class="r-title" data-open="${r.id}">${esc(r.title)}</button>
+        ${r.summary ? `<p class="r-summary">${esc(r.summary)}</p>` : ''}
+        <p class="r-by">Added ${esc(when)}${r.uploader_name ? ` by ${esc(r.uploader_name)}` : ''}</p>
+      </div>
+      <div class="r-actions">
+        <button class="btn link" data-open="${r.id}">Open</button>
+        <button class="btn link" data-dl="${r.id}">Download</button>
+        ${state.uploader ? `<button class="btn link edit" data-edit="${r.id}">Edit</button>
+        <button class="btn link danger" data-del="${r.id}">Delete</button>` : ''}
+      </div>
+    </li>`;
+  }).join('');
+  const empty = $('empty');
+  if (!state.reports.length) {
+    empty.hidden = false;
+    empty.textContent = state.uploader ? 'No reports yet. Use Upload reports to add the first one.' : 'No reports have been shared yet. Check back soon.';
+  } else if (!items.length) { empty.hidden = false; empty.textContent = `No reports match "${q}".`; }
+  else empty.hidden = true;
+}
+$('search').addEventListener('input', render);
+
+$('list').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.open) openReport(b.dataset.open);
+  if (b.dataset.dl) downloadReport(b.dataset.dl);
+  if (b.dataset.edit) editReport(b.dataset.edit);
+  if (b.dataset.del) deleteReport(b.dataset.del);
+});
+
+/* ---------- Viewing ---------- */
+async function fetchReport(id) {
+  if (cache[id]) return cache[id];
+  const r = state.reports.find(x => x.id === id);
+  if (!r) throw new Error('This report is no longer available.');
+  const { data, error } = await db.storage.from(BUCKET).download(r.storage_path);
+  if (error) throw new Error("Couldn't open this report: " + error.message);
+  return (cache[id] = { html: await data.text(), fileName: r.file_name });
+}
+
+// Added to every report before it's shown. Inside the frame, a link like "#section"
+// would otherwise load this site (and its sign-in page) instead of scrolling the report.
+// This makes "#" links scroll within the report, and sends other links to a new tab.
+const LINK_FIX = '<scr' + 'ipt>(function(){document.addEventListener("click",function(e){' +
+  'var a=e.target.closest&&e.target.closest("a[href]");if(!a)return;var h=a.getAttribute("href")||"";' +
+  'if(h.charAt(0)==="#"){e.preventDefault();var id=decodeURIComponent(h.slice(1));' +
+  'var el=id&&(document.getElementById(id)||document.getElementsByName(id)[0]);' +
+  'if(el)el.scrollIntoView({behavior:"smooth",block:"start"});else if(!id)window.scrollTo({top:0,behavior:"smooth"});}' +
+  'else if(!/^(javascript:|mailto:|tel:)/i.test(h)){a.target="_blank";a.rel="noopener";}},true);})();<\/script>';
+
+function prepareReport(html) {
+  return /<\/body>/i.test(html) ? html.replace(/<\/body>(?![\s\S]*<\/body>)/i, LINK_FIX + '</body>') : html + LINK_FIX;
+}
+
+// Swap in a fresh frame instead of changing the old one's content: changing it would add
+// hidden steps to the browser history, so Back would flip through those instead of leaving the report.
+function setFrame(html) {
+  const old = $('frame');
+  const f = old.cloneNode(false);
+  f.removeAttribute('srcdoc');
+  f.srcdoc = html;
+  old.replaceWith(f);
+}
+// Opening a report adds a step to the browser's history (#report=ID in the address bar),
+// so the browser's Back button returns to the list instead of leaving the site.
+async function openReport(id, fromHistory) {
+  if (!fromHistory) history.pushState({ report: id }, '', '#report=' + id);
+  const r = state.reports.find(x => x.id === id);
+  $('viewer-title').textContent = r ? r.title : 'Report';
+  setFrame('<p style="font-family:Figtree,sans-serif;padding:2rem;color:#55686B">Loading report…</p>');
+  $('viewer').hidden = false;
+  state.current = id;
+  $('viewer-back').focus();
+  try {
+    const out = await fetchReport(id);
+    if (state.current === id) setFrame(prepareReport(out.html));
+  } catch (err) {
+    setFrame(`<p style="font-family:Figtree,sans-serif;padding:2rem;color:#D34435">${esc(err.message)}</p>`);
+  }
+}
+function hideViewer() { $('viewer').hidden = true; setFrame(''); state.current = null; }
+function closeViewer() {
+  if (history.state && history.state.report) history.back(); // the popstate handler hides the viewer
+  else { hideViewer(); history.replaceState(null, '', location.pathname); }
+}
+window.addEventListener('popstate', () => {
+  const id = history.state && history.state.report;
+  if (id && state.user) openReport(id, true);
+  else hideViewer();
+});
+// A link like reports.solutionsjournalism.org/#report=ID opens that report after sign-in
+function openFromAddress() {
+  const m = location.hash.match(/^#report=([\w-]+)$/);
+  const id = (m && m[1]) || recall('pending_report');
+  remember('pending_report', null);
+  if (!id || !state.reports.some(r => r.id === id)) return;
+  history.replaceState(null, '', location.pathname); // so Back goes to the list
+  openReport(id);
+}
+$('viewer-back').addEventListener('click', closeViewer);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('viewer').hidden) closeViewer(); });
+$('viewer-download').addEventListener('click', () => state.current && downloadReport(state.current));
+
+async function downloadReport(id) {
+  try {
+    const out = await fetchReport(id);
+    const url = URL.createObjectURL(new Blob([out.html], { type: 'text/html' }));
+    const a = document.createElement('a'); a.href = url; a.download = out.fileName || 'report.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch (err) { toast(err.message); }
+}
+
+/* ---------- Managing reports (uploaders only; Supabase enforces this too) ---------- */
+async function editReport(id) {
+  const r = state.reports.find(x => x.id === id); if (!r) return;
+  const title = prompt('Title', r.title); if (title === null) return;
+  const summary = prompt('Short summary (optional)', r.summary || ''); if (summary === null) return;
+  const { error } = await db.from('reports').update({ title: title.trim() || r.title, summary: summary.trim() }).eq('id', id);
+  if (error) return toast("Couldn't save: " + error.message);
+  r.title = title.trim() || r.title; r.summary = summary.trim(); render(); toast('Saved');
+}
+
+async function deleteReport(id) {
+  const r = state.reports.find(x => x.id === id);
+  if (!r || !confirm(`Delete "${r.title}"? This permanently removes it for everyone.`)) return;
+  const { error: fileErr } = await db.storage.from(BUCKET).remove([r.storage_path]);
+  if (fileErr) return toast("Couldn't delete: " + fileErr.message);
+  const { error } = await db.from('reports').delete().eq('id', id);
+  if (error) return toast("Couldn't delete: " + error.message);
+  state.reports = state.reports.filter(x => x.id !== id); delete cache[id];
+  render(); toast('Report deleted');
+}
+
+const dlg = $('upload-dlg');
+$('upload-open').addEventListener('click', () => {
+  $('uploader-name').value = recall('reports_uploader') || '';
+  state.pending = []; renderPending(); dlg.showModal();
+});
+$('upload-cancel').addEventListener('click', () => dlg.close());
+
+const drop = $('drop');
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+$('file-input').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+
+function decodeEntities(s) { const t = document.createElement('textarea'); t.innerHTML = s; return t.value; }
+
+async function addFiles(fileList) {
+  for (const f of fileList) {
+    if (!/\.html?$/i.test(f.name)) { toast(`${f.name} isn't an HTML file`); continue; }
+    const html = await f.text();
+    const t = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const d = html.match(/<meta[^>]+name=["']description["'][^>]*>/i);
+    const dc = d && d[0].match(/content=(["'])([\s\S]*?)\1/i);
+    state.pending.push({
+      key: Math.random().toString(36).slice(2), file: f, fileName: f.name,
+      title: t ? decodeEntities(t[1].replace(/\s+/g, ' ').trim()) : f.name.replace(/\.html?$/i, ''),
+      summary: dc ? decodeEntities(dc[2].replace(/\s+/g, ' ').trim()).slice(0, 1000) : '',
+      status: ''
+    });
+  }
+  renderPending();
+}
+
+function renderPending() {
+  $('pending').innerHTML = state.pending.map(p => `
+    <div class="pending ${p.status}" data-key="${p.key}">
+      <div class="fname"><span>${esc(p.fileName)}</span><span>${
+        p.status === 'done' ? 'Uploaded' : p.status === 'failed' ? esc(p.error) : p.status === 'busy' ? 'Uploading…' :
+        '<button class="btn link danger" data-remove="' + p.key + '">Remove</button>'}</span></div>
+      <div class="field"><label>Title</label><input data-f="title" value="${esc(p.title)}" ${p.status === 'done' ? 'disabled' : ''}></div>
+      <div class="field"><label>Short summary (optional)</label><textarea data-f="summary" ${p.status === 'done' ? 'disabled' : ''}>${esc(p.summary)}</textarea></div>
+    </div>`).join('');
+  $('upload-go').disabled = !state.pending.some(p => p.status !== 'done');
+}
+$('pending').addEventListener('input', (e) => {
+  const box = e.target.closest('.pending'); const f = e.target.dataset.f;
+  const p = state.pending.find(x => x.key === box.dataset.key);
+  if (p && f) p[f] = e.target.value;
+});
+$('pending').addEventListener('click', (e) => {
+  const k = e.target.dataset.remove;
+  if (k) { state.pending = state.pending.filter(p => p.key !== k); renderPending(); }
+});
+
+$('upload-go').addEventListener('click', async () => {
+  const uploader = $('uploader-name').value.trim();
+  remember('reports_uploader', uploader);
+  $('upload-go').disabled = true;
+  let count = 0;
+  for (const p of state.pending) {
+    if (p.status === 'done') continue;
+    p.status = 'busy'; renderPending();
+    const path = crypto.randomUUID() + '.html';
+    const up = await db.storage.from(BUCKET).upload(path, p.file, { contentType: 'text/html', upsert: false });
+    if (up.error) { p.status = 'failed'; p.error = up.error.message; renderPending(); continue; }
+    const ins = await db.from('reports').insert({
+      title: (p.title || '').trim().slice(0, 300) || p.fileName,
+      summary: (p.summary || '').trim().slice(0, 1000),
+      file_name: p.fileName, storage_path: path, uploader_name: uploader.slice(0, 100)
+    });
+    if (ins.error) {
+      await db.storage.from(BUCKET).remove([path]); // don't leave an orphaned file behind
+      p.status = 'failed'; p.error = ins.error.message;
+    } else { p.status = 'done'; count++; }
+    renderPending();
+  }
+  if (count) {
+    toast(`Uploaded ${count} report${count > 1 ? 's' : ''}`);
+    const list = await loadReports(); if (list) { state.reports = list; render(); }
+  }
+  if (state.pending.every(p => p.status === 'done')) setTimeout(() => dlg.close(), 700);
+});
+</script>
+</body>
+</html>

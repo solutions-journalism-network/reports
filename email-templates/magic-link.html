@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<title>Sign in to SJN Reports</title>
+</head>
+<body style="margin:0; padding:0; background:#EEF3F4;">
+  <!-- Short preview text some inboxes show next to the subject -->
+  <div style="display:none; max-height:0; overflow:hidden;">Your sign-in link for SJN Reports</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF3F4;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px; background:#FFFFFF; border-top:6px solid #D34435;">
+        <tr><td style="padding:32px 36px 8px;">
+          <!-- Logo: change this address to https://reports.solutionsjournalism.org/sjn-logo.png after you switch over -->
+          <img src="https://solutions-journalism-network.github.io/reports/sjn-logo.png" width="170" alt="Solutions Journalism Network" style="display:block; width:170px; max-width:100%; height:auto; border:0;">
+        </td></tr>
+        <tr><td style="padding:24px 36px 0; font-family:Figtree, Helvetica, Arial, sans-serif;">
+          <h1 style="margin:0 0 16px; font-size:28px; line-height:1.2; font-weight:400; color:#D34435;">Sign in to SJN Reports</h1>
+          <p style="margin:0 0 28px; font-size:16px; line-height:1.6; color:#000000;">Click the button below to sign in and read the latest Solutions Journalism Network reports.</p>
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="background:#D34435; border-radius:2px;">
+              <a href="{{ .ConfirmationURL }}" style="display:inline-block; padding:13px 26px; font-family:Figtree, Helvetica, Arial, sans-serif; font-size:16px; font-weight:600; color:#FFFFFF; text-decoration:none;">Sign in</a>
+            </td>
+          </tr></table>
+          <p style="margin:28px 0 0; font-size:14px; line-height:1.6; color:#55686B;">This link works once and expires in an hour. If you didn't ask to sign in, you can ignore this email.</p>
+        </td></tr>
+        <tr><td style="padding:28px 36px 32px; font-family:Figtree, Helvetica, Arial, sans-serif;">
+          <p style="margin:0; padding-top:20px; border-top:1px solid #D8E2E4; font-size:13px; line-height:1.6; color:#55686B;">
+            If the button doesn't work, copy this link into your browser:<br>
+            <a href="{{ .ConfirmationURL }}" style="color:#30626B; word-break:break-all;">{{ .ConfirmationURL }}</a>
+          </p>
+          <p style="margin:16px 0 0; font-size:13px; line-height:1.6; color:#55686B;">
+            Questions? Contact <a href="mailto:marie@solutionsjournalism.org" style="color:#30626B;">marie@solutionsjournalism.org</a>.<br>
+            Solutions Journalism Network
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

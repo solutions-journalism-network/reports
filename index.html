@@ -127,6 +127,30 @@
   .sent { font-family: var(--serif); line-height: 1.6; }
   .sent strong { font-family: var(--sans); }
   .r-actions .btn.link.edit { color: var(--muted); }
+  .share-list { list-style: none; margin: 0 0 1.25rem; padding: 0; border-top: 1px solid var(--line); }
+  .share-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+  .share-list .who { font-weight: 600; margin-right: auto; word-break: break-all; }
+  .share-list .until { font-size: .85rem; color: var(--muted); }
+  .share-list .until.expired { color: var(--red); }
+  .share-none { color: var(--muted); font-family: var(--serif); margin: 0 0 1.25rem; }
+  .field select { padding: .5rem .6rem; border: 1.5px solid var(--line); border-radius: 2px; font: inherit; background: var(--paper); }
+  .share-results { list-style: none; padding: 0; margin: .75rem 0 0; font-size: .9rem; }
+  .share-results .ok { color: var(--teal); }
+  .share-results .bad { color: var(--red); }
+  .tabs { display: flex; gap: .25rem; margin: 0 0 1.25rem; border-bottom: 1px solid var(--line); }
+  .tab { border: none; background: none; padding: .5rem .9rem; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+  .tab:hover { color: var(--teal); }
+  .tab.on { color: var(--red); border-bottom-color: var(--red); }
+  ol.people { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--teal); }
+  ol.people > li { padding: 1.1rem 0; border-bottom: 1px solid var(--line); }
+  .person { font-weight: 600; font-size: 1.1rem; word-break: break-all; }
+  .person-count { font-weight: 400; font-size: .85rem; color: var(--muted); margin-left: .4rem; }
+  .person-reports { list-style: none; margin: .5rem 0 0; padding: 0; }
+  .person-reports li { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; padding: .3rem 0; }
+  .person-reports .rt { margin-right: auto; }
+  .person-reports .until { font-size: .85rem; color: var(--muted); }
+  .person-reports .until.expired { color: var(--red); }
+  .shared-count { font-size: .85rem; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -143,7 +167,8 @@
   </div>
   <div class="panel-form">
     <form id="signin-form">
-      <h2>Sign in</h2>
+      <h2 id="signin-heading">Sign in</h2>
+      <p class="sent" id="signin-hint" hidden style="margin:0 0 1.25rem">Click the button and we'll email you a link to open your report. You only need to do this once on each device.</p>
       <label for="email">Your email address</label>
       <input id="email" type="email" autocomplete="email" required autofocus>
       <div class="error" id="signin-error" role="alert"></div>
@@ -171,11 +196,16 @@
     <button class="btn ghost" id="signout">Sign out</button>
   </header>
   <main>
+    <div class="tabs" id="tabs" hidden>
+      <button class="tab on" data-tab="reports" type="button">Reports</button>
+      <button class="tab" data-tab="people" type="button">People</button>
+    </div>
     <div class="lib-head">
-      <h2>All reports <span class="count" id="count"></span></h2>
+      <h2><span id="lib-heading">All reports</span> <span class="count" id="count"></span></h2>
       <input id="search" type="search" placeholder="Search titles and summaries" aria-label="Search reports">
     </div>
     <ol class="reports" id="list"></ol>
+    <ol class="people" id="people" hidden></ol>
     <p class="empty" id="empty" hidden></p>
   </main>
 </section>
@@ -211,6 +241,40 @@
   </div>
 </dialog>
 
+<!-- Share dialog (uploaders only) -->
+<dialog id="share-dlg" aria-labelledby="share-title">
+  <div class="dlg-head"><h3 id="share-title">Share report</h3></div>
+  <div class="dlg-body">
+    <p class="r-by" id="share-report-name" style="margin:0 0 1rem"></p>
+    <h4 style="margin:0 0 .5rem">People with access</h4>
+    <ul class="share-list" id="share-list"></ul>
+    <p class="share-none" id="share-none" hidden>Not shared with anyone yet. Uploaders can always see every report.</p>
+    <h4 style="margin:0 0 .5rem">Add people</h4>
+    <div class="field">
+      <label for="share-emails">Email addresses (separate with commas or new lines)</label>
+      <textarea id="share-emails" rows="3" placeholder="name@example.org"></textarea>
+    </div>
+    <div class="field">
+      <label for="share-days">Access lasts</label>
+      <select id="share-days">
+        <option value="30" selected>30 days</option>
+        <option value="90">90 days</option>
+        <option value="">Until removed</option>
+      </select>
+    </div>
+    <label style="display:flex; gap:.5rem; align-items:flex-start; font-weight:400; margin:0 0 .5rem;">
+      <input type="checkbox" id="share-notify" checked style="margin-top:.3rem;">
+      <span>Email people who already have an account to let them know</span>
+    </label>
+    <p class="r-by" style="margin:0">New people always get a welcome email with a link to the report. The links in these emails don't expire.</p>
+    <ul class="share-results" id="share-results"></ul>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn ghost" id="share-close" type="button">Close</button>
+    <button class="btn" id="share-go" type="button">Share</button>
+  </div>
+</dialog>
+
 <div id="toast" role="status" hidden></div>
 
 <script>
@@ -227,7 +291,7 @@ const SUPABASE_KEY = 'sb_publishable_RO3iiXI3bLB-K-160YxZfA_hrtjJWVl'; // the PU
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const BUCKET = 'reports';
 const $ = (id) => document.getElementById(id);
-const state = { user: null, uploader: false, reports: [], current: null, pending: [] };
+const state = { user: null, uploader: false, reports: [], access: [], current: null, pending: [], sharing: null, tab: 'reports' };
 const cache = {};
 
 function toast(msg) {
@@ -256,7 +320,7 @@ $('signin-form').addEventListener('submit', async (e) => {
   btn.disabled = false; btn.textContent = 'Email me a sign-in link';
   if (error) {
     $('signin-error').textContent = /signup|not allowed|not found/i.test(error.message)
-      ? "That email address doesn't have access yet. Contact marie@solutionsjournalism.org to be added."
+      ? "That email address doesn't have access yet. Contact SJN to be added."
       : /rate|seconds/i.test(error.message)
         ? 'Please wait a minute before asking for another link.'
         : 'Something went wrong: ' + error.message;
@@ -271,8 +335,19 @@ $('signin-again').addEventListener('click', () => {
 
 $('signout').addEventListener('click', async () => { await db.auth.signOut(); });
 
+// Links in report emails look like …/?email=name@org.org#report=ID.
+// Pre-fill the email so signing in is one click, and tidy the address bar.
+(function prefillFromEmailLink() {
+  const email = new URLSearchParams(location.search).get('email');
+  if (!email) return;
+  $('email').value = email;
+  $('signin-heading').textContent = 'Almost there';
+  $('signin-hint').hidden = false;
+  history.replaceState(history.state, '', location.pathname + location.hash);
+})();
+
 function showSignin() {
-  state.user = null; state.uploader = false; state.reports = [];
+  state.user = null; state.uploader = false; state.reports = []; state.tab = 'reports';
   Object.keys(cache).forEach(k => delete cache[k]);
   $('library').hidden = true; hideViewer(); $('signin').hidden = false;
   $('signin-sent').hidden = true; $('signin-form').hidden = false;
@@ -293,19 +368,46 @@ async function showLibrary() {
   const [{ data: up }, list] = await Promise.all([db.rpc('is_uploader'), loadReports()]);
   state.uploader = up === true;
   $('upload-open').hidden = !state.uploader;
+  $('tabs').hidden = !state.uploader;
+  if (!state.uploader) state.tab = 'reports';
   $('role-label').textContent = state.uploader ? 'Can upload' : '';
   if (list) { state.reports = list; render(); openFromAddress(); }
 }
 
+// Readers only get back the reports shared with them: Supabase's access rules filter the list.
+// The sharing rows come back too: uploaders see everyone's, readers see only their own (for "Available until").
 async function loadReports() {
-  const { data, error } = await db.from('reports')
-    .select('id, title, summary, file_name, storage_path, uploader_name, created_at')
-    .order('created_at', { ascending: false });
-  if (error) { $('empty').textContent = "Couldn't load the reports: " + error.message; return null; }
-  return data;
+  const [rep, acc] = await Promise.all([
+    db.from('reports')
+      .select('id, title, summary, file_name, storage_path, uploader_name, created_at')
+      .order('created_at', { ascending: false }),
+    db.from('report_access').select('report_id, email, expires_at, granted_at').order('granted_at')
+  ]);
+  if (rep.error) { $('empty').textContent = "Couldn't load the reports: " + rep.error.message; return null; }
+  state.access = acc.data || [];
+  return rep.data;
+}
+
+const isActive = (a) => !a.expires_at || new Date(a.expires_at) > new Date();
+const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+function accessNote(r) {
+  const rows = state.access.filter(a => a.report_id === r.id);
+  if (state.uploader) {
+    const n = rows.filter(isActive).length;
+    return ` · <span class="shared-count">${n ? `Shared with ${n} ${n === 1 ? 'person' : 'people'}` : 'Not shared yet'}</span>`;
+  }
+  const mine = rows.find(a => a.email === (state.user.email || '').toLowerCase());
+  return mine && mine.expires_at ? ` · Available until ${esc(fmtDate(mine.expires_at))}` : '';
 }
 
 function render() {
+  const people = state.tab === 'people';
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === state.tab));
+  $('lib-heading').textContent = people ? 'People with access' : 'All reports';
+  $('search').placeholder = people ? 'Search people and reports' : 'Search titles and summaries';
+  $('list').hidden = people; $('people').hidden = !people;
+  if (people) return renderPeople();
   const q = $('search').value.trim().toLowerCase();
   const items = state.reports.filter(r =>
     !q || (r.title + ' ' + r.summary + ' ' + r.uploader_name).toLowerCase().includes(q));
@@ -316,12 +418,13 @@ function render() {
       <div>
         <button class="r-title" data-open="${r.id}">${esc(r.title)}</button>
         ${r.summary ? `<p class="r-summary">${esc(r.summary)}</p>` : ''}
-        <p class="r-by">Added ${esc(when)}${r.uploader_name ? ` by ${esc(r.uploader_name)}` : ''}</p>
+        <p class="r-by">Added ${esc(when)}${r.uploader_name ? ` by ${esc(r.uploader_name)}` : ''}${accessNote(r)}</p>
       </div>
       <div class="r-actions">
         <button class="btn link" data-open="${r.id}">Open</button>
         <button class="btn link" data-dl="${r.id}">Download</button>
-        ${state.uploader ? `<button class="btn link edit" data-edit="${r.id}">Edit</button>
+        ${state.uploader ? `<button class="btn link" data-share="${r.id}">Share</button>
+        <button class="btn link edit" data-edit="${r.id}">Edit</button>
         <button class="btn link danger" data-del="${r.id}">Delete</button>` : ''}
       </div>
     </li>`;
@@ -329,17 +432,82 @@ function render() {
   const empty = $('empty');
   if (!state.reports.length) {
     empty.hidden = false;
-    empty.textContent = state.uploader ? 'No reports yet. Use Upload reports to add the first one.' : 'No reports have been shared yet. Check back soon.';
+    empty.textContent = state.uploader ? 'No reports yet. Use Upload reports to add the first one.' : 'No reports have been shared with you yet. Check back soon.';
   } else if (!items.length) { empty.hidden = false; empty.textContent = `No reports match "${q}".`; }
   else empty.hidden = true;
 }
 $('search').addEventListener('input', render);
+
+$('tabs').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-tab]'); if (!t || t.dataset.tab === state.tab) return;
+  state.tab = t.dataset.tab; $('search').value = ''; render();
+});
+
+/* ---------- People view (uploaders): who can see what ---------- */
+function untilText(a) {
+  return !a.expires_at ? 'Until removed' : (isActive(a) ? 'Until ' : 'Expired ') + fmtDate(a.expires_at);
+}
+
+function renderPeople() {
+  const q = $('search').value.trim().toLowerCase();
+  const titleOf = (id) => (state.reports.find(r => r.id === id) || {}).title || 'Deleted report';
+  const byEmail = {};
+  state.access.forEach(a => { (byEmail[a.email] = byEmail[a.email] || []).push(a); });
+  const emails = Object.keys(byEmail).sort().filter(e =>
+    !q || e.includes(q) || byEmail[e].some(a => titleOf(a.report_id).toLowerCase().includes(q)));
+  $('count').textContent = Object.keys(byEmail).length || '';
+  $('people').innerHTML = emails.map(email => {
+    const rows = byEmail[email].slice().sort((x, y) => titleOf(x.report_id).localeCompare(titleOf(y.report_id)));
+    const active = rows.filter(isActive).length;
+    return `<li>
+      <div class="person">${esc(email)}<span class="person-count">${active} active ${active === 1 ? 'report' : 'reports'}</span></div>
+      <ul class="person-reports">${rows.map(a => `<li>
+        <span class="rt">${esc(titleOf(a.report_id))}</span>
+        <span class="until ${isActive(a) ? '' : 'expired'}">${esc(untilText(a))}</span>
+        ${a.expires_at ? `<button class="btn link" data-extend="${esc(a.report_id)}|${esc(a.email)}">${isActive(a) ? 'Extend 30 days' : 'Renew 30 days'}</button>` : ''}
+        <button class="btn link danger" data-revoke="${esc(a.report_id)}|${esc(a.email)}">Remove</button>
+      </li>`).join('')}</ul>
+    </li>`;
+  }).join('');
+  const empty = $('empty');
+  if (!Object.keys(byEmail).length) { empty.hidden = false; empty.textContent = 'No reports have been shared with anyone yet. Use Share next to a report.'; }
+  else if (!emails.length) { empty.hidden = false; empty.textContent = `No one matches "${q}".`; }
+  else empty.hidden = true;
+}
+
+$('people').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const [rid, email] = (b.dataset.extend || b.dataset.revoke || '').split('|');
+  const row = state.access.find(a => a.report_id === rid && a.email === email);
+  if (row) changeAccess(row, b.dataset.revoke ? 'remove' : 'extend');
+});
+
+// Used by both the Share window and the People view
+async function changeAccess(row, action) {
+  if (action === 'remove') {
+    const title = (state.reports.find(r => r.id === row.report_id) || {}).title || 'this report';
+    if (!confirm(`Remove ${row.email}'s access to "${title}"?`)) return;
+    const { error } = await db.from('report_access').delete().eq('report_id', row.report_id).eq('email', row.email);
+    if (error) return toast("Couldn't remove: " + error.message);
+    state.access = state.access.filter(a => a !== row);
+  } else {
+    // 30 more days from today, or from the current end date if that's later
+    const base = row.expires_at && isActive(row) ? new Date(row.expires_at) : new Date();
+    const expires_at = new Date(base.getTime() + 30 * 86400000).toISOString();
+    const { error } = await db.from('report_access').update({ expires_at }).eq('report_id', row.report_id).eq('email', row.email);
+    if (error) return toast("Couldn't extend: " + error.message);
+    row.expires_at = expires_at;
+  }
+  if (state.sharing && shareDlg.open) renderShareList();
+  render();
+}
 
 $('list').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.open) openReport(b.dataset.open);
   if (b.dataset.dl) downloadReport(b.dataset.dl);
   if (b.dataset.edit) editReport(b.dataset.edit);
+  if (b.dataset.share) openShare(b.dataset.share);
   if (b.dataset.del) deleteReport(b.dataset.del);
 });
 
@@ -446,6 +614,67 @@ async function deleteReport(id) {
   state.reports = state.reports.filter(x => x.id !== id); delete cache[id];
   render(); toast('Report deleted');
 }
+
+/* ---------- Sharing (uploaders only) ---------- */
+// Adding people goes through the "share-report" Edge Function, which can send invitation emails.
+// Extending and removing access are simple table changes that Supabase's rules allow for uploaders.
+const shareDlg = $('share-dlg');
+
+function openShare(id) {
+  const r = state.reports.find(x => x.id === id); if (!r) return;
+  state.sharing = id;
+  $('share-report-name').textContent = r.title;
+  $('share-emails').value = ''; $('share-results').innerHTML = ''; $('share-notify').checked = true;
+  renderShareList();
+  shareDlg.showModal();
+}
+
+function renderShareList() {
+  const rows = state.access.filter(a => a.report_id === state.sharing);
+  $('share-none').hidden = rows.length > 0;
+  $('share-list').innerHTML = rows.map(a => {
+    const until = !a.expires_at ? 'Until removed'
+      : isActive(a) ? 'Until ' + fmtDate(a.expires_at) : 'Expired ' + fmtDate(a.expires_at);
+    return `<li>
+      <span class="who">${esc(a.email)}</span>
+      <span class="until ${isActive(a) ? '' : 'expired'}">${esc(until)}</span>
+      ${a.expires_at ? `<button class="btn link" data-extend="${esc(a.email)}">${isActive(a) ? 'Extend 30 days' : 'Renew 30 days'}</button>` : ''}
+      <button class="btn link danger" data-revoke="${esc(a.email)}">Remove</button>
+    </li>`;
+  }).join('');
+}
+
+$('share-list').addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const row = state.access.find(a => a.report_id === state.sharing && a.email === (b.dataset.extend || b.dataset.revoke));
+  if (row) changeAccess(row, b.dataset.revoke ? 'remove' : 'extend');
+});
+
+$('share-go').addEventListener('click', async () => {
+  const emails = $('share-emails').value.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+  if (!emails.length) return $('share-emails').focus();
+  const btn = $('share-go'); btn.disabled = true; btn.textContent = 'Sharing…';
+  const daysVal = $('share-days').value;
+  const { data, error } = await db.functions.invoke('share-report', {
+    body: { report_id: state.sharing, emails, days: daysVal ? Number(daysVal) : null, notify: $('share-notify').checked, redirect_to: location.origin + location.pathname }
+  });
+  btn.disabled = false; btn.textContent = 'Share';
+  let results = data && data.results;
+  if (error) {
+    let msg = error.message;
+    try { const body = await error.context.json(); msg = body.error || msg; } catch (e) {}
+    $('share-results').innerHTML = `<li class="bad">${esc(msg)}</li>`;
+    return;
+  }
+  $('share-results').innerHTML = results.map(r => `<li class="${r.status === 'error' ? 'bad' : 'ok'}">${esc(r.email)}: ${
+    r.status === 'invited' ? 'shared and welcome email sent'
+      : r.status === 'notified' ? 'shared and emailed'
+      : r.status === 'shared' ? 'shared' + (r.message ? ` (${esc(r.message)})` : '')
+      : esc(r.message)}</li>`).join('');
+  $('share-emails').value = results.filter(r => r.status === 'error').map(r => r.email).join(', ');
+  const list = await loadReports(); if (list) { state.reports = list; renderShareList(); render(); }
+});
+$('share-close').addEventListener('click', () => shareDlg.close());
 
 const dlg = $('upload-dlg');
 $('upload-open').addEventListener('click', () => {

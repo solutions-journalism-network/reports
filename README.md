@@ -1,6 +1,6 @@
-# SJN Reports site
+# SJN Reports site (using Supabase)
 
-The site at **reports.solutionsjournalism.org** shares HTML reports with SJN staff and partners.
+The site at **reports.solutionsjournalism.org** shares Claude-created HTML reports with SJN staff and partners.
 
 ## How it works
 
@@ -11,7 +11,7 @@ The site at **reports.solutionsjournalism.org** shares HTML reports with SJN sta
 | Email service (e.g. Resend) | Connected to Supabase | Sends the sign-in emails |
 
 - **Signing in:** a person enters their email and gets a sign-in link. Only people you've added can sign in. They stay signed in on that device until they sign out.
-- **Reading:** anyone signed in can read every report.
+- **Reading:** each person sees only the reports shared with them, for 30 days, 90 days, or until removed. Uploaders see every report.
 - **Uploading, editing, deleting:** only people on the **uploaders** list.
 - Supabase's access rules enforce all of this, not just the website. Report files sit in private storage, and deleting a report removes it permanently.
 
@@ -63,28 +63,56 @@ The publishable key is meant to be public. The access rules from step 2 decide w
 ### 6. Add yourself and test
 1. **Authentication → Users → Add user → Send invitation** with your email. Click the link in the email. It opens the site, already signed in.
 2. You should see **Upload reports** (you're on the uploaders list). Upload a report, open it, edit its title, and delete it to check everything works.
+3. Upload the existing reports from the Drive folder. You can select several at once.
+
+### 7. Retire the old setup
+- In Apps Script: **Deploy → Manage deployments**, archive the web app, and delete any triggers. You can keep the project for reference or delete it.
+- The Drive folder can stay as an archive of the original files. The site no longer reads it.
 
 ---
 
+## Update: sharing reports with specific people
+Do this once if your site was set up before per-person sharing existed.
+
+1. **Run the update.** Supabase → **SQL Editor → New query**, paste in all of `update-sharing.sql`, **Run**. Its last section gives everyone who has access today every existing report, with no end date, so nothing changes for current readers.
+2. **Add the sharing function.** Supabase → **Edge Functions → Deploy a new function → Via editor**. Name it exactly `share-report`, replace the sample code with all of `share-report.ts`, and click **Deploy**. Leave JWT verification on (the default). There are no keys to paste: Supabase gives the function what it needs.
+2b. **Connect email for sharing (required).** In Resend, create an API key named `Supabase – share emails` (Sending access). In Supabase → **Edge Functions → Secrets**, add a secret named `RESEND_API_KEY` with that key as the value. The Share button uses it to send both welcome emails to new people and "new report" emails to existing people. Without it, sharing still grants access, but no emails go out (the Share window says so).
+3. **Update the site.** Before replacing `index.html`, copy the two lines with `SUPABASE_URL` and `SUPABASE_KEY` from your current file into the new one (they're near the top of the `<script>` section). Then replace it in the repo, commit and push.
+4. **Test.** Signed in as an uploader, click **Share** on one report and share it with an email you control that isn't an uploader. Open the invitation in a private window: that person should see only that report, with "Available until…" under it.
+
 ## Everyday use
 
-**Giving someone access:** In Supabase, go to Authentication → Users → **Add user → Send invitation**. They click the emailed link and they're in. Afterward, they sign in by entering their email on the site.
+**Sharing a report:** next to any report, click **Share** → enter one or more email addresses → choose **30 days**, **90 days**, or **Until removed** → **Share**. New people get a welcome email; people who already have an account get a "new report" email (untick **Email people who already have an account** to skip those). Nobody is emailed twice for a report they already have access to.
 
-**Making someone an uploader:** also add their email in **Table Editor → uploaders** (Insert → row). Capitalization doesn't matter.
+**The links in these emails never expire.** They're plain links to the report, not sign-in links. The first time someone uses one on a device, the site shows their email already filled in: they click **Email me a sign-in link**, open that email, and they're in. After that, the link takes them straight to the report.
 
-**Removing access:** Authentication → Users → find them → **Delete user**. Also delete them from **uploaders** if they're listed. Their sign-in stops working; if they're signed in at that moment, they lose access within about an hour, when their session refreshes.
+Use **Share** rather than Supabase's **Invite user** for readers: dashboard invitations use one-click sign-in links that expire after 24 hours.
 
-**Uploading:** sign in → **Upload reports** → drop in HTML files. Titles and summaries come from inside each file, and you can edit them before uploading. Reports appear immediately.
+**Extending or removing access:** in the same **Share** window, click **Extend 30 days** or **Remove** next to a person. Expired access shows in red with a **Renew 30 days** option. Access ends right away when removed or expired.
+
+**Seeing who can see what:** uploaders have a **People** tab above the list. It shows everyone with access, the reports each person can see, and when each one ends, with **Extend 30 days** and **Remove** buttons. Use the search box to find a person or a report.
+
+**Making someone an uploader:** add their email in **Table Editor → uploaders**. Uploaders see every report and can upload, edit, share and delete. They need an account first (share any report with them, or invite them in Authentication → Users).
+
+**Removing someone completely:** Authentication → Users → find them → **Delete user** (and remove them from **uploaders** if listed). If they're signed in at that moment, they lose access within about an hour.
+
+**Uploading:** sign in → **Upload reports** → drop in HTML files. Titles and summaries come from inside each file and can be edited before uploading. New reports aren't shared with anyone until you click **Share**.
 
 **Fixing a title later:** click **Edit** next to the report.
 
-**Linking to one report:** open it and copy the address (it ends in `#report=…`). Whoever opens it goes straight to that report, after signing in if needed.
+**Linking to one report:** open it and copy the address (it ends in `#report=…`). It works for anyone the report is shared with.
+
+**Staying signed in:** the sign-in link expires after 24 hours, but once someone has signed in they stay signed in on that device and browser until they sign out or clear their browser data. Each new device or browser needs its own sign-in.
 
 ## Troubleshooting
 
 | What you see | What to do |
 |---|---|
-| "That email address doesn't have access yet" | Add them under Authentication → Users (step 6). |
+| "That email address doesn't have access yet" | They don't have an account yet: share a report with them, or invite them under Authentication → Users. |
+| Someone signs in but sees "No reports have been shared with you yet" | Nothing is shared with them, or their access expired. Use **Share** on the report. |
+| **Share** says "Failed to send a request to the Edge Function" or similar | Check the function is deployed and named exactly `share-report` (Edge Functions page). Its **Logs** tab shows the detailed error. |
+| Share says "the notification email failed" | Check the `RESEND_API_KEY` secret (Edge Functions → Secrets) and that the domain is still verified in Resend. The person still has access. |
+| Sharing works but the invitation email doesn't arrive | Same as sign-in emails: check spam, Authentication → Logs, and the Resend settings. |
 | No email arrives | Check spam. Under Authentication → Logs, look for email errors. Confirm SMTP is on (step 4) and the domain is verified in Resend. |
 | "Please wait a minute before asking for another link" | Supabase limits how often one address can request links. Wait 60 seconds. |
 | The link opens a page that says it's expired | Links expire after about an hour and work once. Request a new one. |

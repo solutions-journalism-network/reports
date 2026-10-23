@@ -87,6 +87,11 @@
   .lib-head h2 .count { color: var(--muted); font-size: .45em; margin-left: .4rem; }
   #search { padding: .6rem .8rem; border: 1.5px solid var(--line); border-radius: 2px; width: min(22rem, 100%); }
   #search:focus { border-color: var(--teal); }
+  .lib-tools { display: flex; gap: .6rem; align-items: center; }
+  .lib-tools #search { width: 18rem; }
+  @media (max-width: 640px) { .lib-tools { flex-wrap: wrap; width: 100%; } .lib-tools #search { width: 100%; } }
+  #upload-open { background: var(--red); color: var(--paper); padding: .6rem 1.1rem; }
+  #upload-open:hover { background: #B8392C; border-color: #B8392C; }
 
   ol.reports { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--teal); }
   ol.reports li { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; padding: 1.4rem 0; border-bottom: 1px solid var(--line); align-items: start; }
@@ -138,13 +143,16 @@
   .share-results:not(:empty) { background: var(--mist); padding: .75rem 1rem; }
   .share-results .ok { color: var(--teal); }
   .share-results .bad { color: var(--red); }
-  .mode { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 0 0 2rem; }
-  .mode-btn { text-align: left; padding: 1rem 1.25rem; border: 1.5px solid var(--line); border-radius: 2px; background: var(--paper); font: inherit; cursor: pointer; }
-  .mode-btn strong { display: block; font-size: 1.15rem; font-weight: 600; color: var(--teal); }
-  .mode-btn span { display: block; font-size: .9rem; color: var(--muted); margin-top: .15rem; }
-  .mode-btn:hover { border-color: var(--teal); }
-  .mode-btn.on { background: var(--teal); border-color: var(--teal); }
-  .mode-btn.on strong, .mode-btn.on span { color: var(--paper); }
+  .mode { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0 0 2.5rem; }
+  .mode-btn { display: flex; align-items: center; gap: 1rem; text-align: left; padding: 1.25rem 1.5rem;
+    border: 2px solid var(--teal); border-top-width: 6px; border-radius: 2px; background: var(--mist); font: inherit; cursor: pointer;
+    transition: background .15s, border-color .15s; }
+  .mode-btn svg { flex: none; width: 2.4rem; height: 2.4rem; color: var(--teal); }
+  .mode-btn strong { display: block; font-size: 1.45rem; font-weight: 700; color: var(--teal); line-height: 1.2; }
+  .mode-btn span { display: block; font-size: .95rem; color: var(--muted); margin-top: .2rem; }
+  .mode-btn:hover { background: #DDE9EB; }
+  .mode-btn.on { background: var(--teal); border-color: var(--teal); border-top-color: var(--red); }
+  .mode-btn.on strong, .mode-btn.on span, .mode-btn.on svg { color: var(--paper); }
   @media (max-width: 560px) { .mode { grid-template-columns: 1fr; } }
   ol.people { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--teal); }
   ol.people > li { border-bottom: 1px solid var(--line); }
@@ -203,21 +211,25 @@
       </div>
     </div>
     <span class="role" id="role-label"></span>
-    <button class="btn" id="upload-open" hidden>Upload reports</button>
     <button class="btn ghost" id="signout">Sign out</button>
   </header>
   <main>
     <nav class="mode" id="tabs" hidden aria-label="What do you want to manage?">
       <button class="mode-btn on" data-tab="reports" type="button" aria-pressed="true">
-        <strong>Manage reports</strong><span>Upload, edit and share reports</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
+        <div><strong>Manage reports</strong><span>Upload, edit and share reports</span></div>
       </button>
       <button class="mode-btn" data-tab="people" type="button" aria-pressed="false">
-        <strong>Manage people</strong><span>See who has access and change it</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.6a5 5 0 0 1 5.5 5.4"/></svg>
+        <div><strong>Manage people</strong><span>See who has access and change it</span></div>
       </button>
     </nav>
     <div class="lib-head">
       <h2><span id="lib-heading">All reports</span> <span class="count" id="count"></span></h2>
-      <input id="search" type="search" placeholder="Search titles and summaries" aria-label="Search reports">
+      <div class="lib-tools">
+        <input id="search" type="search" placeholder="Search titles" aria-label="Search reports">
+        <button class="btn" id="upload-open" type="button" hidden>Upload reports</button>
+      </div>
     </div>
     <ol class="reports" id="list"></ol>
     <ol class="people" id="people" hidden></ol>
@@ -382,10 +394,9 @@ async function showLibrary() {
   $('empty').hidden = false; $('empty').textContent = 'Loading reports…';
   const [{ data: up }, list] = await Promise.all([db.rpc('is_uploader'), loadReports()]);
   state.uploader = up === true;
-  $('upload-open').hidden = !state.uploader;
   $('tabs').hidden = !state.uploader;
   if (!state.uploader) state.tab = 'reports';
-  $('role-label').textContent = state.uploader ? 'Admin View' : '';
+  $('role-label').textContent = state.uploader ? 'ADMIN VIEW' : '';
   if (list) { state.reports = list; render(); openFromAddress(); }
 }
 
@@ -416,12 +427,23 @@ function accessNote(r) {
   return mine && mine.expires_at ? ` · Available until ${esc(fmtDate(mine.expires_at))}` : '';
 }
 
+// Uploaders see "Added Oct 5, 2026 by David · Shared with 3 people"; readers see "Added by David · Available until…"
+function byLine(r, when) {
+  const added = state.uploader
+    ? `Added ${esc(when)}${r.uploader_name ? ` by ${esc(r.uploader_name)}` : ''}`
+    : (r.uploader_name ? `Added by ${esc(r.uploader_name)}` : '');
+  const note = accessNote(r).replace(/^ · /, '');
+  const line = [added, note].filter(Boolean).join(' · ');
+  return line ? `<p class="r-by">${line}</p>` : '';
+}
+
 function render() {
   const people = state.tab === 'people';
   document.querySelectorAll('.mode-btn').forEach(t => { const on = t.dataset.tab === state.tab; t.classList.toggle('on', on); t.setAttribute('aria-pressed', on); });
-  $('lib-heading').textContent = people ? 'People with access' : 'All reports';
-  $('search').placeholder = people ? 'Search people and reports' : 'Search titles and summaries';
+  $('lib-heading').textContent = people ? 'People' : 'Reports';
+  $('search').placeholder = people ? 'Search people' : 'Search titles';
   $('list').hidden = people; $('people').hidden = !people;
+  $('upload-open').hidden = !state.uploader || people; // only in Manage reports
   if (people) return renderPeople();
   const q = $('search').value.trim().toLowerCase();
   const items = state.reports.filter(r =>
@@ -433,13 +455,13 @@ function render() {
       <div>
         <button class="r-title" data-open="${r.id}">${esc(r.title)}</button>
         ${r.summary ? `<p class="r-summary">${esc(r.summary)}</p>` : ''}
-        <p class="r-by">Added ${esc(when)}${r.uploader_name ? ` by ${esc(r.uploader_name)}` : ''}${accessNote(r)}</p>
+        ${byLine(r, when)}
       </div>
       <div class="r-actions">
         <button class="btn link" data-open="${r.id}">Open</button>
         <button class="btn link" data-dl="${r.id}">Download</button>
         ${state.uploader ? `<button class="btn link" data-share="${r.id}">Share</button>
-        <button class="btn link edit" data-edit="${r.id}">Edit</button>
+        <button class="btn link edit" data-edit="${r.id}">Edit title</button>
         <button class="btn link danger" data-del="${r.id}">Delete</button>` : ''}
       </div>
     </li>`;

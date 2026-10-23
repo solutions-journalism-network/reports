@@ -79,7 +79,7 @@
   header.bar .name { margin-right: auto; color: var(--red); font-weight: 700; letter-spacing: .06em; line-height: 1.05; font-size: .95rem; }
   header.bar .name .logo-fallback span { display: block; font-weight: 400; }
   header.bar .name em { display: block; font-style: normal; color: var(--teal); font-weight: 500; letter-spacing: 0; font-size: .85rem; margin-top: .2rem; }
-  .role { font-size: .85rem; color: var(--muted); }
+  .role { font-size: .85rem; color: var(--muted); letter-spacing: .06em; font-weight: 600; }
 
   main { padding: 3rem clamp(1rem, 4vw, 3rem) 4rem; max-width: 70rem; margin: 0 auto; }
   .lib-head { display: flex; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
@@ -135,14 +135,25 @@
   .share-none { color: var(--muted); font-family: var(--serif); margin: 0 0 1.25rem; }
   .field select { padding: .5rem .6rem; border: 1.5px solid var(--line); border-radius: 2px; font: inherit; background: var(--paper); }
   .share-results { list-style: none; padding: 0; margin: .75rem 0 0; font-size: .9rem; }
+  .share-results:not(:empty) { background: var(--mist); padding: .75rem 1rem; }
   .share-results .ok { color: var(--teal); }
   .share-results .bad { color: var(--red); }
-  .tabs { display: flex; gap: .25rem; margin: 0 0 1.25rem; border-bottom: 1px solid var(--line); }
-  .tab { border: none; background: none; padding: .5rem .9rem; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
-  .tab:hover { color: var(--teal); }
-  .tab.on { color: var(--red); border-bottom-color: var(--red); }
+  .mode { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 0 0 2rem; }
+  .mode-btn { text-align: left; padding: 1rem 1.25rem; border: 1.5px solid var(--line); border-radius: 2px; background: var(--paper); font: inherit; cursor: pointer; }
+  .mode-btn strong { display: block; font-size: 1.15rem; font-weight: 600; color: var(--teal); }
+  .mode-btn span { display: block; font-size: .9rem; color: var(--muted); margin-top: .15rem; }
+  .mode-btn:hover { border-color: var(--teal); }
+  .mode-btn.on { background: var(--teal); border-color: var(--teal); }
+  .mode-btn.on strong, .mode-btn.on span { color: var(--paper); }
+  @media (max-width: 560px) { .mode { grid-template-columns: 1fr; } }
   ol.people { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--teal); }
-  ol.people > li { padding: 1.1rem 0; border-bottom: 1px solid var(--line); }
+  ol.people > li { border-bottom: 1px solid var(--line); }
+  ol.people details > summary { display: flex; align-items: baseline; gap: .6rem; padding: 1rem 0; cursor: pointer; list-style: none; }
+  ol.people details > summary::-webkit-details-marker { display: none; }
+  ol.people details > summary::before { content: '▸'; color: var(--teal); width: 1em; flex: none; transition: transform .15s; }
+  ol.people details[open] > summary::before { transform: rotate(90deg); }
+  ol.people details > summary:hover .person { color: var(--red); }
+  ol.people details > .person-reports { margin: 0 0 1rem 1.6rem; }
   .person { font-weight: 600; font-size: 1.1rem; word-break: break-all; }
   .person-count { font-weight: 400; font-size: .85rem; color: var(--muted); margin-left: .4rem; }
   .person-reports { list-style: none; margin: .5rem 0 0; padding: 0; }
@@ -196,10 +207,14 @@
     <button class="btn ghost" id="signout">Sign out</button>
   </header>
   <main>
-    <div class="tabs" id="tabs" hidden>
-      <button class="tab on" data-tab="reports" type="button">Reports</button>
-      <button class="tab" data-tab="people" type="button">People</button>
-    </div>
+    <nav class="mode" id="tabs" hidden aria-label="What do you want to manage?">
+      <button class="mode-btn on" data-tab="reports" type="button" aria-pressed="true">
+        <strong>Manage reports</strong><span>Upload, edit and share reports</span>
+      </button>
+      <button class="mode-btn" data-tab="people" type="button" aria-pressed="false">
+        <strong>Manage people</strong><span>See who has access and change it</span>
+      </button>
+    </nav>
     <div class="lib-head">
       <h2><span id="lib-heading">All reports</span> <span class="count" id="count"></span></h2>
       <input id="search" type="search" placeholder="Search titles and summaries" aria-label="Search reports">
@@ -257,9 +272,9 @@
     <div class="field">
       <label for="share-days">Access lasts</label>
       <select id="share-days">
-        <option value="30" selected>30 days</option>
+        <option value="" selected>Until revoked</option>
+        <option value="30">30 days</option>
         <option value="90">90 days</option>
-        <option value="">Until removed</option>
       </select>
     </div>
     <label style="display:flex; gap:.5rem; align-items:flex-start; font-weight:400; margin:0 0 .5rem;">
@@ -291,7 +306,7 @@ const SUPABASE_KEY = 'sb_publishable_RO3iiXI3bLB-K-160YxZfA_hrtjJWVl'; // the PU
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const BUCKET = 'reports';
 const $ = (id) => document.getElementById(id);
-const state = { user: null, uploader: false, reports: [], access: [], current: null, pending: [], sharing: null, tab: 'reports' };
+const state = { user: null, uploader: false, reports: [], access: [], current: null, pending: [], sharing: null, tab: 'reports', openPeople: new Set() };
 const cache = {};
 
 function toast(msg) {
@@ -370,7 +385,7 @@ async function showLibrary() {
   $('upload-open').hidden = !state.uploader;
   $('tabs').hidden = !state.uploader;
   if (!state.uploader) state.tab = 'reports';
-  $('role-label').textContent = state.uploader ? 'Can upload' : '';
+  $('role-label').textContent = state.uploader ? 'Admin View' : '';
   if (list) { state.reports = list; render(); openFromAddress(); }
 }
 
@@ -403,7 +418,7 @@ function accessNote(r) {
 
 function render() {
   const people = state.tab === 'people';
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === state.tab));
+  document.querySelectorAll('.mode-btn').forEach(t => { const on = t.dataset.tab === state.tab; t.classList.toggle('on', on); t.setAttribute('aria-pressed', on); });
   $('lib-heading').textContent = people ? 'People with access' : 'All reports';
   $('search').placeholder = people ? 'Search people and reports' : 'Search titles and summaries';
   $('list').hidden = people; $('people').hidden = !people;
@@ -445,7 +460,7 @@ $('tabs').addEventListener('click', (e) => {
 
 /* ---------- People view (uploaders): who can see what ---------- */
 function untilText(a) {
-  return !a.expires_at ? 'Until removed' : (isActive(a) ? 'Until ' : 'Expired ') + fmtDate(a.expires_at);
+  return !a.expires_at ? 'Until revoked' : (isActive(a) ? 'Until ' : 'Expired ') + fmtDate(a.expires_at);
 }
 
 function renderPeople() {
@@ -459,21 +474,29 @@ function renderPeople() {
   $('people').innerHTML = emails.map(email => {
     const rows = byEmail[email].slice().sort((x, y) => titleOf(x.report_id).localeCompare(titleOf(y.report_id)));
     const active = rows.filter(isActive).length;
-    return `<li>
-      <div class="person">${esc(email)}<span class="person-count">${active} active ${active === 1 ? 'report' : 'reports'}</span></div>
+    // Collapsed by default; stays open after changes, and opens when a search matches a report title
+    const open = state.openPeople.has(email) || (q && !email.includes(q));
+    return `<li><details data-email="${esc(email)}" ${open ? 'open' : ''}>
+      <summary><span class="person">${esc(email)}</span><span class="person-count">${active} active ${active === 1 ? 'report' : 'reports'}</span></summary>
       <ul class="person-reports">${rows.map(a => `<li>
         <span class="rt">${esc(titleOf(a.report_id))}</span>
         <span class="until ${isActive(a) ? '' : 'expired'}">${esc(untilText(a))}</span>
         ${a.expires_at ? `<button class="btn link" data-extend="${esc(a.report_id)}|${esc(a.email)}">${isActive(a) ? 'Extend 30 days' : 'Renew 30 days'}</button>` : ''}
         <button class="btn link danger" data-revoke="${esc(a.report_id)}|${esc(a.email)}">Remove</button>
       </li>`).join('')}</ul>
-    </li>`;
+    </details></li>`;
   }).join('');
   const empty = $('empty');
   if (!Object.keys(byEmail).length) { empty.hidden = false; empty.textContent = 'No reports have been shared with anyone yet. Use Share next to a report.'; }
   else if (!emails.length) { empty.hidden = false; empty.textContent = `No one matches "${q}".`; }
   else empty.hidden = true;
 }
+
+// Remember which people are expanded, so a change doesn't collapse them
+$('people').addEventListener('toggle', (e) => {
+  const d = e.target; if (!d.dataset || !d.dataset.email) return;
+  d.open ? state.openPeople.add(d.dataset.email) : state.openPeople.delete(d.dataset.email);
+}, true);
 
 $('people').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
@@ -624,7 +647,7 @@ function openShare(id) {
   const r = state.reports.find(x => x.id === id); if (!r) return;
   state.sharing = id;
   $('share-report-name').textContent = r.title;
-  $('share-emails').value = ''; $('share-results').innerHTML = ''; $('share-notify').checked = true;
+  $('share-emails').value = ''; $('share-results').innerHTML = ''; $('share-notify').checked = true; $('share-days').value = '';
   renderShareList();
   shareDlg.showModal();
 }
@@ -633,7 +656,7 @@ function renderShareList() {
   const rows = state.access.filter(a => a.report_id === state.sharing);
   $('share-none').hidden = rows.length > 0;
   $('share-list').innerHTML = rows.map(a => {
-    const until = !a.expires_at ? 'Until removed'
+    const until = !a.expires_at ? 'Until revoked'
       : isActive(a) ? 'Until ' + fmtDate(a.expires_at) : 'Expired ' + fmtDate(a.expires_at);
     return `<li>
       <span class="who">${esc(a.email)}</span>
@@ -654,25 +677,44 @@ $('share-go').addEventListener('click', async () => {
   const emails = $('share-emails').value.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
   if (!emails.length) return $('share-emails').focus();
   const btn = $('share-go'); btn.disabled = true; btn.textContent = 'Sharing…';
-  const daysVal = $('share-days').value;
-  const { data, error } = await db.functions.invoke('share-report', {
-    body: { report_id: state.sharing, emails, days: daysVal ? Number(daysVal) : null, notify: $('share-notify').checked, redirect_to: location.origin + location.pathname }
-  });
-  btn.disabled = false; btn.textContent = 'Share';
-  let results = data && data.results;
-  if (error) {
-    let msg = error.message;
-    try { const body = await error.context.json(); msg = body.error || msg; } catch (e) {}
-    $('share-results').innerHTML = `<li class="bad">${esc(msg)}</li>`;
+  $('share-results').innerHTML = '';
+  const show = (html) => { $('share-results').innerHTML = html; };
+  let results;
+  try {
+    const daysVal = $('share-days').value;
+    const { data, error } = await db.functions.invoke('share-report', {
+      body: { report_id: state.sharing, emails, days: daysVal ? Number(daysVal) : null, notify: $('share-notify').checked, redirect_to: location.origin + location.pathname }
+    });
+    if (error) {
+      let msg = error.message;
+      try { const body = await error.context.json(); msg = body.error || body.message || msg; } catch (e) {}
+      if (/not found|404/i.test(msg)) msg += ' — check the function is deployed and named exactly share-report.';
+      throw new Error(msg);
+    }
+    results = data && data.results;
+    if (!Array.isArray(results)) throw new Error('The sharing function sent back an unexpected reply: ' + JSON.stringify(data).slice(0, 200));
+  } catch (err) {
+    show(`<li class="bad">Couldn't share: ${esc(err.message || String(err))}</li>`);
+    btn.disabled = false; btn.textContent = 'Share';
     return;
   }
-  $('share-results').innerHTML = results.map(r => `<li class="${r.status === 'error' ? 'bad' : 'ok'}">${esc(r.email)}: ${
+  btn.disabled = false; btn.textContent = 'Share';
+  const list = await loadReports(); if (list) { state.reports = list; renderShareList(); render(); }
+  const failed = results.filter(r => r.status === 'error');
+  if (!failed.length) {
+    // Everything worked: close and confirm
+    const sent = results.filter(r => r.status === 'invited' || r.status === 'notified').length;
+    shareDlg.close();
+    toast(`Shared with ${results.length} ${results.length === 1 ? 'person' : 'people'}` + (sent ? ` · ${sent} ${sent === 1 ? 'email' : 'emails'} sent` : ''));
+    return;
+  }
+  // Something went wrong for at least one person: stay open and say what
+  show(results.map(r => `<li class="${r.status === 'error' ? 'bad' : 'ok'}">${esc(r.email)}: ${
     r.status === 'invited' ? 'shared and welcome email sent'
       : r.status === 'notified' ? 'shared and emailed'
       : r.status === 'shared' ? 'shared' + (r.message ? ` (${esc(r.message)})` : '')
-      : esc(r.message)}</li>`).join('');
-  $('share-emails').value = results.filter(r => r.status === 'error').map(r => r.email).join(', ');
-  const list = await loadReports(); if (list) { state.reports = list; renderShareList(); render(); }
+      : esc(r.message)}</li>`).join(''));
+  $('share-emails').value = failed.map(r => r.email).join(', ');
 });
 $('share-close').addEventListener('click', () => shareDlg.close());
 

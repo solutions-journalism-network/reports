@@ -1,4 +1,4 @@
-# SJN Reports site (using Supabase)
+# SJN Reports site (Supabase version)
 
 The site at **reports.solutionsjournalism.org** shares Claude-created HTML reports with SJN staff and partners.
 
@@ -11,7 +11,7 @@ The site at **reports.solutionsjournalism.org** shares Claude-created HTML repor
 | Email service (e.g. Resend) | Connected to Supabase | Sends the sign-in emails |
 
 - **Signing in:** a person enters their email and gets a sign-in link. Only people you've added can sign in. They stay signed in on that device until they sign out.
-- **Reading:** each person sees only the reports shared with them, for 30 days, 90 days, or until removed. Uploaders see every report.
+- **Reading:** each person sees only the reports shared with them, until revoked, or for 30 or 90 days. Uploaders see every report.
 - **Uploading, editing, deleting:** only people on the **uploaders** list.
 - Supabase's access rules enforce all of this, not just the website. Report files sit in private storage, and deleting a report removes it permanently.
 
@@ -75,14 +75,14 @@ The publishable key is meant to be public. The access rules from step 2 decide w
 Do this once if your site was set up before per-person sharing existed.
 
 1. **Run the update.** Supabase → **SQL Editor → New query**, paste in all of `update-sharing.sql`, **Run**. Its last section gives everyone who has access today every existing report, with no end date, so nothing changes for current readers.
-2. **Add the sharing function.** Supabase → **Edge Functions → Deploy a new function → Via editor**. Name it exactly `share-report`, replace the sample code with all of `share-report.ts`, and click **Deploy**. Leave JWT verification on (the default). There are no keys to paste: Supabase gives the function what it needs.
+2. **Add the sharing function.** Supabase → **Edge Functions → Deploy a new function → Via editor**. Name it exactly `share-report`, replace the sample code with all of `edge-function/share-report.ts`, and click **Deploy**. Leave JWT verification on (the default). There are no keys to paste: Supabase gives the function what it needs.
 2b. **Connect email for sharing (required).** In Resend, create an API key named `Supabase – share emails` (Sending access). In Supabase → **Edge Functions → Secrets**, add a secret named `RESEND_API_KEY` with that key as the value. The Share button uses it to send both welcome emails to new people and "new report" emails to existing people. Without it, sharing still grants access, but no emails go out (the Share window says so).
 3. **Update the site.** Before replacing `index.html`, copy the two lines with `SUPABASE_URL` and `SUPABASE_KEY` from your current file into the new one (they're near the top of the `<script>` section). Then replace it in the repo, commit and push.
 4. **Test.** Signed in as an uploader, click **Share** on one report and share it with an email you control that isn't an uploader. Open the invitation in a private window: that person should see only that report, with "Available until…" under it.
 
 ## Everyday use
 
-**Sharing a report:** next to any report, click **Share** → enter one or more email addresses → choose **30 days**, **90 days**, or **Until removed** → **Share**. New people get a welcome email; people who already have an account get a "new report" email (untick **Email people who already have an account** to skip those). Nobody is emailed twice for a report they already have access to.
+**Sharing a report:** next to any report, click **Share** → enter one or more email addresses → choose **Until revoked** (the default), **30 days**, or **90 days** → **Share**. New people get a welcome email; people who already have an account get a "new report" email (untick **Email people who already have an account** to skip those). Nobody is emailed twice for a report they already have access to.
 
 **The links in these emails never expire.** They're plain links to the report, not sign-in links. The first time someone uses one on a device, the site shows their email already filled in: they click **Email me a sign-in link**, open that email, and they're in. After that, the link takes them straight to the report.
 
@@ -90,7 +90,7 @@ Use **Share** rather than Supabase's **Invite user** for readers: dashboard invi
 
 **Extending or removing access:** in the same **Share** window, click **Extend 30 days** or **Remove** next to a person. Expired access shows in red with a **Renew 30 days** option. Access ends right away when removed or expired.
 
-**Seeing who can see what:** uploaders have a **People** tab above the list. It shows everyone with access, the reports each person can see, and when each one ends, with **Extend 30 days** and **Remove** buttons. Use the search box to find a person or a report.
+**Seeing who can see what:** uploaders can switch to **Manage people** at the top of the page. It shows everyone with access, the reports each person can see, and when each one ends, with **Extend 30 days** and **Remove** buttons. Use the search box to find a person or a report.
 
 **Making someone an uploader:** add their email in **Table Editor → uploaders**. Uploaders see every report and can upload, edit, share and delete. They need an account first (share any report with them, or invite them in Authentication → Users).
 
